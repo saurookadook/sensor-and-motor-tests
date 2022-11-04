@@ -6,6 +6,9 @@ authors = ["Andy Maskiell <maskiella@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
+pybricks = "^3.1.0"
+python-ev3dev = "^1.2.0"
+python-ev3dev2 = "^2.1.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
