@@ -1,3 +1,4 @@
+.examples/
 .poetry-cache/
 
 .DS_Store
