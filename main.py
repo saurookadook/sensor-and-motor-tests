@@ -17,7 +17,7 @@ def main():
         port_a=LegoPort("outA"),
         port_b=LegoPort("outB"),
         port_d=LegoPort("outD"),
-        disable_sound=True,
+        # disable_sound=True,
     )
 
     basically_a_car.boot_up_greeting()
