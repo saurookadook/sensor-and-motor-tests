@@ -11,6 +11,8 @@ from ev3dev2.sensor import INPUT_1, INPUT_2
 from ev3dev2.sensor.lego import TouchSensor
 from ev3dev2.sound import Sound
 
+from .constants import DriveDirection, TurnDirection
+
 
 class App:
     _brick_device = None
@@ -32,20 +34,6 @@ class App:
         except KeyError:
             self.is_silenced = False
 
-        # self._port_a = LegoPort("outA")
-        # self._port_b = LegoPort("outB")
-        # self._console = Console()
-        # self._buttons = Button()
-        # self._sound = Sound()
-
-        # assert self._port_a and self._port_a.status
-        # assert self._port_b and self._port_b.status
-        # self._port_a.mode = "dc-motor"
-        # self._port_b.mode = "dc-motor"
-        # sleep(0.5)
-        # self._right_motor = DcMotor(self._port_a.address)
-        # self._left_motor = DcMotor(self._port_b.address)
-
     @staticmethod
     def _configure_ports_with_mode(
         self,
@@ -59,28 +47,28 @@ class App:
         mode_for_d=None,
     ):
         self._port_a = port_a
-        assert self._port_a and self._port_a.status
-        debug_logger("port_a mode: {}".format(self._port_a.mode))
-        if not self._port_a.mode:
-            self._port_a.mode = mode_for_a or "dc-motor"
+        if self._port_a and self._port_a.status:
+            debug_logger("port_a mode: {}".format(self._port_a.mode))
+            if not self._port_a.mode:
+                self._port_a.mode = mode_for_a or "dc-motor"
 
         self._port_b = port_b
-        assert self._port_b and self._port_b.status
-        debug_logger("port_b mode: {}".format(self._port_b.mode))
-        if not self._port_b.mode:
-            self._port_b.mode = mode_for_b or "dc-motor"
+        if self._port_b and self._port_b.status:
+            debug_logger("port_b mode: {}".format(self._port_b.mode))
+            if not self._port_b.mode:
+                self._port_b.mode = mode_for_b or "dc-motor"
 
-        # self._port_c = port_c
-        # assert self._port_c and self._port_c.status
-        # debug_logger("port_c mode: {}".format(self._port_c.mode))
-        # if not self._port_c.mode:
-        #     self._port_c.mode = mode_for_c or "dc-motor"
+        self._port_c = port_c
+        if self._port_c and self._port_c.status:
+            debug_logger("port_c mode: {}".format(self._port_c.mode))
+            if not self._port_c.mode:
+                self._port_c.mode = mode_for_c or "dc-motor"
 
         self._port_d = port_d
-        assert self._port_d and self._port_d.status
-        debug_logger("port_d mode: {}".format(self._port_d.mode))
-        if not self._port_d.mode:
-            self._port_d.mode = mode_for_d or "dc-motor"
+        if self._port_d and self._port_d.status:
+            debug_logger("port_d mode: {}".format(self._port_d.mode))
+            if not self._port_d.mode:
+                self._port_d.mode = mode_for_d or "dc-motor"
 
         sleep(0.5)
 
@@ -212,8 +200,11 @@ class EV3App_Basically_A_Car(BaseCar):
 
         __slots__ = ["_drive_direction", "_turn_direction"]
 
-        self._drive_direction = "forwards"
-        self._turn_direction = "straight"
+        self._drive_direction = DriveDirection.FORWARDS.value
+        self._turn_direction = TurnDirection.STRAIGHT.value
+
+        self.cruise_speed = 45
+        self.reorient_speed = 60
 
     @property
     def drive_direction(self):
@@ -236,6 +227,7 @@ class EV3App_Basically_A_Car(BaseCar):
     ):
         start_time = int(time())
         iteration_count = 0
+        current_drive_direction = DriveDirection.FORWARDS.value
         debug_logger("Beginning at {}".format(start_time))
 
         while True:
@@ -244,45 +236,56 @@ class EV3App_Basically_A_Car(BaseCar):
                 debug_logger("Running for {} seconds".format(seconds_since_start))
                 iteration_count += 1
 
-            if self.turn_direction != "straight":
-                self.turn(turn_direction="straight")
-            self.drive(speed=50, drive_direction=self.drive_direction, duration=-1)
+            if self.turn_direction != TurnDirection.STRAIGHT.value:
+                self.turn_front_axle(turn_direction=TurnDirection.STRAIGHT.value)
+            self.drive(
+                speed=self.cruise_speed,
+                drive_direction=current_drive_direction,
+                duration=-1,
+            )
 
             if self._front_touch_sensor.is_pressed:
                 self.stop()
+                current_drive_direction = DriveDirection.REVERSE.value
                 turn_direction = self._choose_turn_direction(
-                    drive_direction=self.drive_direction,
+                    drive_direction=current_drive_direction,
                     last_turn_direction=self.turn_direction,
                 )
-                self.drive_direction = "backwards"
                 debug_logger("Front touch sensor pressed!")
                 debug_logger(
-                    "turn_direction: {}\ndrive_direction: {}".format(
-                        turn_direction, self.drive_direction
+                    "turn_direction: {}\ndrive_direction: {}\ncurrent_drive_direction: {}".format(
+                        turn_direction, self.drive_direction, current_drive_direction
                     )
                 )
                 self.say("Ouch, my face!")
-                self.turn(turn_direction=turn_direction)
-                self.drive(speed=75, drive_direction=self.drive_direction, duration=2)
+                self.turn_front_axle(turn_direction=turn_direction)
+                self.drive(
+                    speed=self.reorient_speed,
+                    drive_direction=current_drive_direction,
+                    duration=2,
+                )
                 self.say("boop bop beep")
-                self.drive_direction = "forwards"
 
             elif self._back_touch_sensor.is_pressed:
                 self.stop()
+                current_drive_direction = DriveDirection.FORWARDS.value
                 turn_direction = self._choose_turn_direction(
-                    drive_direction=self.drive_direction,
+                    drive_direction=current_drive_direction,
                     last_turn_direction=self.turn_direction,
                 )
-                self.drive_direction = "forwards"
                 debug_logger("Back touch sensor pressed!")
                 debug_logger(
-                    "turn_direction: {}\ndrive_direction: {}".format(
-                        turn_direction, self.drive_direction
+                    "turn_direction: {}\ndrive_direction: {}\ncurrent_drive_direction: {}".format(
+                        turn_direction, self.drive_direction, current_drive_direction
                     )
                 )
                 self.say("Ouch, my butthole!")
-                self.turn(turn_direction=turn_direction)
-                self.drive(speed=75, drive_direction=self.drive_direction, duration=2)
+                self.turn_front_axle(turn_direction=turn_direction)
+                self.drive(
+                    speed=self.reorient_speed,
+                    drive_direction=current_drive_direction,
+                    duration=2,
+                )
                 self.say("beep bop boop")
 
             # sleep(0.01)
@@ -306,16 +309,24 @@ class EV3App_Basically_A_Car(BaseCar):
         if drive_direction != self.drive_direction:
             debug_logger(("-" * 30) + " drive: change direction " + ("-" * 30))
             debug_logger(
-                "turn_direction: {}\ndrive_direction: {}".format(
-                    self.turn_direction, self.drive_direction
+                "turn_direction: {}\ndrive_direction: {}\ndrive_direction arg: {}".format(
+                    self.turn_direction, self.drive_direction, drive_direction
                 )
             )
-            self.drive_direction(drive_direction)
 
-        if speed and not right_wheel_speed:
-            right_wheel_speed = -speed if self.drive_direction == "forwards" else speed
-        if speed and not left_wheel_speed:
-            left_wheel_speed = -speed if self.drive_direction == "forwards" else speed
+        if (not right_wheel_speed and not left_wheel_speed) and speed:
+            if drive_direction == DriveDirection.FORWARDS.value:
+                self.forward(speed=speed)
+            elif drive_direction == DriveDirection.REVERSE.value:
+                self.reverse(speed=speed)
+        else:
+            right_wheel_speed = -speed if drive_direction == "forwards" else speed
+            left_wheel_speed = -speed if drive_direction == "forwards" else speed
+
+            self._rear_right_motor.run_direct(duty_cycle_sp=right_wheel_speed)
+            self._rear_left_motor.run_direct(duty_cycle_sp=left_wheel_speed)
+            if duration > 0:
+                sleep(duration)
 
         if drive_direction != self.drive_direction:
             debug_logger(
@@ -323,14 +334,17 @@ class EV3App_Basically_A_Car(BaseCar):
                     speed, right_wheel_speed, left_wheel_speed
                 )
             )
-        self._rear_right_motor.run_direct(duty_cycle_sp=right_wheel_speed)
-        self._rear_left_motor.run_direct(duty_cycle_sp=left_wheel_speed)
+            self.drive_direction = drive_direction
 
-        if duration > 0:
-            sleep(duration)
-            self.stop()
+    def forward(self, speed=0):
+        self._rear_right_motor.run_direct(duty_cycle_sp=speed)
+        self._rear_left_motor.run_direct(duty_cycle_sp=speed)
 
-    def turn(self, turn_direction):
+    def reverse(self, speed=0):
+        self._rear_right_motor.run_direct(duty_cycle_sp=(-speed))
+        self._rear_left_motor.run_direct(duty_cycle_sp=(-speed))
+
+    def turn_front_axle(self, turn_direction):
         if turn_direction == self.turn_direction:
             return
 
@@ -384,4 +398,7 @@ class EV3App_Basically_A_Car(BaseCar):
 
 
 def debug_logger(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
+    try:
+        print(*args, file=sys.stderr, **kwargs)
+    except Exception:
+        pass
