@@ -246,6 +246,7 @@ class EV3App_Basically_A_Car(BaseCar):
 
             if self._front_touch_sensor.is_pressed:
                 self.stop()
+                self.reset_drive_motors()
                 current_drive_direction = DriveDirection.REVERSE.value
                 turn_direction = self._choose_turn_direction(
                     drive_direction=current_drive_direction,
@@ -268,6 +269,7 @@ class EV3App_Basically_A_Car(BaseCar):
 
             elif self._back_touch_sensor.is_pressed:
                 self.stop()
+                self.reset_drive_motors()
                 current_drive_direction = DriveDirection.FORWARDS.value
                 turn_direction = self._choose_turn_direction(
                     drive_direction=current_drive_direction,
@@ -337,12 +339,19 @@ class EV3App_Basically_A_Car(BaseCar):
             self.drive_direction = drive_direction
 
     def forward(self, speed=0):
-        self._rear_right_motor.run_direct(duty_cycle_sp=speed)
-        self._rear_left_motor.run_direct(duty_cycle_sp=speed)
+        speed = -speed
+        self._base_run_direct(speed=speed)
 
     def reverse(self, speed=0):
-        self._rear_right_motor.run_direct(duty_cycle_sp=(-speed))
-        self._rear_left_motor.run_direct(duty_cycle_sp=(-speed))
+        self._base_run_direct(speed=speed)
+
+    def reset_drive_motors(self):
+        self._rear_right_motor.reset()
+        self._rear_left_motor.reset()
+
+    def _base_run_direct(self, speed=0):
+        self._rear_right_motor.run_direct(duty_cycle_sp=speed)
+        self._rear_left_motor.run_direct(duty_cycle_sp=speed)
 
     def turn_front_axle(self, turn_direction):
         if turn_direction == self.turn_direction:
