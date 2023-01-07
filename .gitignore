@@ -2,5 +2,3 @@
 .poetry-cache/
 
 .DS_Store
-
-sensor_and_motor_tests/_dev/
