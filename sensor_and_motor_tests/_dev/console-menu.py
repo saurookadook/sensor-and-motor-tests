@@ -67,23 +67,26 @@ def menu(choices, before_run_function=None, after_run_function=None):
     Console Menu that accepts choices and corresponding functions to call.
     The user must press the same button twice: once to see their choice highlited,
     a second time to confirm and run the function. The EV3 LEDs show each state change:
-    Green = Ready for button, Amber = Ready for second button, Red = Running
-    Parameters:
-    - `choices` a dictionary of tuples "button-name": ("mission-name", function-to-call)
-        Example:
-            choices = {
-                # "button-name": ("mission-name", function-to-call)
-                # or "button-name": ("mission-name", lambda: call(x, y, z))
-                "enter": ("CAL", lambda: auto_calibrate(robot, 1.0)),
-                "up": ("MI2", fmission2),
-                "right": ("MI3", fmission3),
-                "down": ("MI4", fmission4),
-                "left": ("MI5", fmission5)
-            }
-        where fmission2, fmission3 are functions;
-        note don't call them with parentheses, unless preceded by lambda: to defer the call
-    - `before_run_function` when not None, call this function before each mission run, passed with mission-name
-    - `after_run_function` when not None, call this function after each mission run, passed with mission-name
+    - Green = Ready for button
+    - Amber = Ready for second button
+    - Red = Running
+
+    Args:
+        choices (dict): a dictionary of tuples keyed by mission name _(like `"button-name": ("mission-name", function-to-call)`)_
+            Example:
+                choices = {
+                    # "button-name": ("mission-name", function-to-call)
+                    # or "button-name": ("mission-name", lambda: call(x, y, z))
+                    "enter": ("CAL", lambda: auto_calibrate(robot, 1.0)),
+                    "up": ("MI2", fmission2),
+                    "right": ("MI3", fmission3),
+                    "down": ("MI4", fmission4),
+                    "left": ("MI5", fmission5)
+                }
+            where fmission2, fmission3 are functions;
+            NOTE: don't call them with parentheses, unless preceded by lambda. To defer the call:
+        before_run_function (Callable): when not None, call this function before each mission run, passed with mission-name
+        after_run_function (Callable): when not None, call this function after each mission run, passed with mission-name
     """
 
     console = Console()
