@@ -8,5 +8,5 @@ class DriveDirection(Enum):
 
 class TurnDirection(Enum):
     LEFT = "left"
-    STRAIGHT = "straight"
     RIGHT = "right"
+    STRAIGHT = "straight"
