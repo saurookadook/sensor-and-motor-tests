@@ -8,7 +8,7 @@
 from ev3dev2.port import LegoPort
 
 # `hubs` module: https://pybricks.com/ev3-micropython/hubs.html
-from sensor_and_motor_tests.ev3apps import EV3App_Basically_A_Car, EV3Tank
+from sensor_and_motor_tests.ev3apps import EV3App_Basically_A_Car, EV3Tank, EV3TachoTank
 
 
 def main():
