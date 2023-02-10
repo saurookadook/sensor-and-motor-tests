@@ -45,6 +45,9 @@ print(("-" * 30) + " all_motors " + ("-" * 30), file=sys.stderr)
 ### Quirks
 
 - https://stackoverflow.com/questions/57483794/python-shlex-no-closing-quotations-error-how-to-deal-with
+- [\[Question\] How can we ev3devBrowser.download.exclude multiple patterns? #104](https://github.com/ev3dev/vscode-ev3dev-browser/issues/104)
+    - **answer**: use `ev3devBrowser.download.exclude: "GlobPattern"` _(see [Glob-Patterns](https://github.com/ev3dev/vscode-ev3dev-browser/wiki/Glob-Patterns))_
+    - _suggested:_ `"ev3devBrowser.download.exclude": "{**/.*/*,**/tests/*}",`
 
 ---
 

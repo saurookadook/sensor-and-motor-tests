@@ -15,13 +15,15 @@ from .utils import debug_logger
 
 
 class App:
-    _brick_device = None
-    _console = None
-    _port_a = None
-    _port_b = None
-    _console = None
-    _buttons = None
-    _sound = None
+    __slots__ = [
+        "_brick_device",
+        "_console",
+        "_port_a",
+        "_port_b",
+        "_console",
+        "_buttons",
+        "_sound",
+    ]
 
     def __init__(self, name="", brick_device=None, **kwargs):
         self.name = name

@@ -4,61 +4,176 @@ from time import sleep, time
 
 from ev3dev2.button import Button
 from ev3dev2.console import Console
-from ev3dev2.motor import DcMotor, MediumMotor
-from ev3dev2.port import LegoPort
+from ev3dev2.motor import (
+    MediumMotor,
+)  # possible bug with missing setter for `duty_cycle`
 from ev3dev2.sensor import INPUT_1, INPUT_2
 from ev3dev2.sensor.lego import TouchSensor
 from ev3dev2.sound import Sound
 
 from ..app import App
 from ..constants import DriveDirection, TurnDirection
-from ..utils import debug_logger
+from ..utils import debug_logger, safe_init_port
 
 
-class EV3Tank(App):
+class AbstractEV3Tank(App):
+
+    __slots__ = [
+        "_buttons",
+        "_console",
+        "_sound",
+        "_left_motor",
+        "_right_motor",
+        "_front_touch_sensor",
+        "_back_touch_sensor",
+        "_current_direction",
+        "_drive_direction",
+        "_turn_direction",
+        "_cruise_speed",
+        "_reorient_speed",
+    ]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        __slots__ = ["_drive_direction", "_turn_direction"]
-
-        self._buttons = Button()
-        self._console = Console()
-        self._sound = Sound()
-
-        # TODO: implement dynamic mapping safely
-        port_a = kwargs["port_a"] or LegoPort("outA")
-        port_b = kwargs["port_b"] or LegoPort("outB")
-
-        super()._configure_ports_with_mode(self, port_a=port_a, port_b=port_b)
-
-        self._right_motor = DcMotor(self._port_a.address)
-        self._left_motor = DcMotor(self._port_b.address)
-        self.current_direction = "forwards"
-
-        self._front_touch_sensor = TouchSensor(INPUT_1)
-        self._back_touch_sensor = TouchSensor(INPUT_2)
-
-        self._drive_direction = DriveDirection.FORWARDS.value
-        self._turn_direction = TurnDirection.STRAIGHT.value
-
-        self.cruise_speed = 60
+        self.current_direction = DriveDirection.FORWARDS.value
+        self.drive_direction = DriveDirection.FORWARDS.value
+        self.turn_direction = TurnDirection.STRAIGHT.value
+        self.cruise_speed = 80
         self.reorient_speed = 60
+
+    @property
+    def buttons(self):
+        return self._buttons
+
+    @buttons.setter
+    def buttons(self, value):
+        self._buttons = value
+
+    @property
+    def console(self):
+        return self._console
+
+    @console.setter
+    def console(self, value):
+        self._console = value
+
+    @property
+    def sound(self):
+        return self._sound
+
+    @sound.setter
+    def sound(self, value):
+        self._sound = value
+
+    @property
+    def left_motor(self):
+        return self._left_motor
+
+    @left_motor.setter
+    def left_motor(self, value):
+        self._left_motor = value
+
+    @property
+    def right_motor(self):
+        return self._right_motor
+
+    @right_motor.setter
+    def right_motor(self, value):
+        self._right_motor = value
+
+    @property
+    def front_touch_sensor(self):
+        return self._front_touch_sensor
+
+    @front_touch_sensor.setter
+    def front_touch_sensor(self, value):
+        self._front_touch_sensor = value
+
+    @property
+    def back_touch_sensor(self):
+        return self._back_touch_sensor
+
+    @back_touch_sensor.setter
+    def back_touch_sensor(self, value):
+        self._back_touch_sensor = value
+
+    @property
+    def current_direction(self):
+        return self._current_direction
+
+    @current_direction.setter
+    def current_direction(self, value):
+        try:
+            self._current_direction = DriveDirection(value).value
+        except ValueError as ve:
+            debug_logger(ve)
+            # raise ve
 
     @property
     def drive_direction(self):
         return self._drive_direction
 
     @drive_direction.setter
-    def drive_direction(self, direction):
-        self._drive_direction = direction
+    def drive_direction(self, value):
+        try:
+            self._drive_direction = DriveDirection(value).value
+        except ValueError as ve:
+            debug_logger(ve)
+            # raise ve
 
     @property
     def turn_direction(self):
         return self._turn_direction
 
     @turn_direction.setter
-    def turn_direction(self, direction):
-        self._turn_direction = direction
+    def turn_direction(self, value):
+        try:
+            self._turn_direction = TurnDirection(value).value
+        except ValueError as ve:
+            debug_logger(ve)
+            # raise ve
+
+    @property
+    def cruise_speed(self):
+        return self._cruise_speed
+
+    @cruise_speed.setter
+    def cruise_speed(self, value):
+        self._cruise_speed = value
+
+    @property
+    def reorient_speed(self):
+        return self._reorient_speed
+
+    @reorient_speed.setter
+    def reorient_speed(self, value):
+        self._reorient_speed = value
+
+    def _configure_ports_with_mode(self, port_a=None, port_b=None):
+        super()._configure_ports_with_mode(self, port_a=port_a, port_b=port_b)
+
+
+class EV3TachoTank(App):
+
+    __slots__ = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.buttons = Button()
+        self.console = Console()
+        self.sound = Sound()
+
+        super()._configure_ports_with_mode(
+            self, port_a=safe_init_port("a", kwargs), port_b=safe_init_port("b", kwargs)
+        )
+
+        self.right_motor = MediumMotor(self._port_a.address)
+        self.left_motor = MediumMotor(self._port_b.address)
+
+        self.front_touch_sensor = TouchSensor(INPUT_1)
+        self.back_touch_sensor = TouchSensor(INPUT_2)
 
     def boot_up_greeting(self):
         self.say("Bootin up, baby")
@@ -81,16 +196,12 @@ class EV3Tank(App):
     def run(
         self,
     ):
+        self.boot_up_greeting()
+
         current_drive_direction = DriveDirection.FORWARDS.value
         start_time = int(time())
-        # iteration_count = 0
-        # debug_logger("Beginning at {}".format(start_time))
 
         while True:
-            # if start_time % 1000 == 0.0:
-            #     seconds_since_start = int(time()) - start_time
-            #     debug_logger("Running for {} seconds".format(seconds_since_start))
-            #     iteration_count += 1
 
             if self.turn_direction != TurnDirection.STRAIGHT.value:
                 self.turn_in_drive_direction(
@@ -102,18 +213,18 @@ class EV3Tank(App):
                 duration=-1,
             )
 
-            if self._front_touch_sensor.is_pressed:
+            if self.front_touch_sensor.is_pressed:
                 self.stop()
                 current_drive_direction = DriveDirection.REVERSE.value
                 turn_direction = self._choose_turn_direction(
                     drive_direction=current_drive_direction,
                     last_turn_direction=self.turn_direction,
                 )
-                debug_logger("Front touch sensor pressed!")
                 debug_logger(
+                    "Front touch sensor pressed!\n",
                     "turn_direction: {}\ndrive_direction: {}\ncurrent_drive_direction: {}".format(
                         turn_direction, self.drive_direction, current_drive_direction
-                    )
+                    ),
                 )
                 self.say("Ouch, my face!")
                 self.turn_in_drive_direction(
@@ -134,11 +245,11 @@ class EV3Tank(App):
                     drive_direction=current_drive_direction,
                     last_turn_direction=self.turn_direction,
                 )
-                debug_logger("Back touch sensor pressed!")
                 debug_logger(
+                    "Back touch sensor pressed!\n",
                     "turn_direction: {}\ndrive_direction: {}\ncurrent_drive_direction: {}".format(
                         turn_direction, self.drive_direction, current_drive_direction
-                    )
+                    ),
                 )
                 self.say("Ouch, my butthole!")
                 self.turn_in_drive_direction(
@@ -173,28 +284,33 @@ class EV3Tank(App):
             self.current_direction = drive_direction
 
         if speed and not left_wheel_speed:
-            left_wheel_speed = -speed if drive_direction == "forwards" else speed
+            # left_wheel_speed = -speed if drive_direction == "forwards" else speed
+            left_wheel_speed = speed if drive_direction == "forwards" else -speed
         if speed and not right_wheel_speed:
-            right_wheel_speed = speed if drive_direction == "forwards" else -speed
+            # right_wheel_speed = speed if drive_direction == "forwards" else -speed
+            right_wheel_speed = -speed if drive_direction == "forwards" else speed
 
-        self._left_motor.run_direct(duty_cycle_sp=left_wheel_speed)
-        self._right_motor.run_direct(duty_cycle_sp=right_wheel_speed)
+        # self._left_motor.run_direct(duty_cycle_sp=left_wheel_speed)
+        # self._right_motor.run_direct(duty_cycle_sp=right_wheel_speed)
+        self._base_run_direct(
+            left_wheel_speed=left_wheel_speed, right_wheel_speed=right_wheel_speed
+        )
 
         if int(duration) > 0:
             sleep(duration)
             self.stop()
 
-    def forward(self, speed=0):
-        self._left_motor.run_direct(duty_cycle_sp=speed)
-        self._right_motor.run_direct(duty_cycle_sp=-speed)
+    def forward(self, left_wheel_speed=0, right_wheel_speed=0):
+        self._left_motor.run_direct(duty_cycle_sp=left_wheel_speed)
+        self._right_motor.run_direct(duty_cycle_sp=-right_wheel_speed)
 
-    def reverse(self, speed=0):
-        self._left_motor.run_direct(duty_cycle_sp=-speed)
-        self._right_motor.run_direct(duty_cycle_sp=speed)
+    def reverse(self, left_wheel_speed=0, right_wheel_speed=0):
+        self._left_motor.run_direct(duty_cycle_sp=-left_wheel_speed)
+        self._right_motor.run_direct(duty_cycle_sp=right_wheel_speed)
 
-    def _base_run_direct(self, speed=0):
-        self._left_motor.run_direct(duty_cycle_sp=speed)
-        self._right_motor.run_direct(duty_cycle_sp=speed)
+    def _base_run_direct(self, left_wheel_speed=0, right_wheel_speed=0):
+        self._left_motor.run_direct(duty_cycle_sp=left_wheel_speed)
+        self._right_motor.run_direct(duty_cycle_sp=right_wheel_speed)
 
     def turn_in_drive_direction(self, drive_direction, turn_direction):
         if turn_direction == self.turn_direction:
@@ -206,11 +322,13 @@ class EV3Tank(App):
         )
 
         if drive_direction == DriveDirection.FORWARDS.value:
-            self._left_motor.run_direct(duty_cycle_sp=left_wheel_speed)
-            self._right_motor.run_direct(duty_cycle_sp=-right_wheel_speed)
+            self._base_run_direct(
+                left_wheel_speed=left_wheel_speed, right_wheel_speed=-right_wheel_speed
+            )
         else:
-            self._left_motor.run_direct(duty_cycle_sp=-left_wheel_speed)
-            self._right_motor.run_direct(duty_cycle_sp=right_wheel_speed)
+            self._base_run_direct(
+                left_wheel_speed=-left_wheel_speed, right_wheel_speed=right_wheel_speed
+            )
 
         # if turn_direction == "straight":
         #     debug_logger("Straightenin' out!")
